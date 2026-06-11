@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRFIS – Dynamic Robust Fuzzy Inference System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111827;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --card: #0f1929;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header h1 { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; }
+  header h1 span { color: var(--accent); }
+  .badge { background: var(--accent2); color: #fff; font-size: 0.65rem; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
+
+  /* ── Layout ── */
+  .container { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 65px); }
+
+  /* ── Sidebar ── */
+  aside {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .nav-section { font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; padding: 12px 8px 4px; text-transform: uppercase; }
+  .nav-btn {
+    background: none; border: none; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+    text-align: left; padding: 9px 12px; border-radius: 6px;
+    cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+  }
+  .nav-btn:hover { background: var(--border); color: var(--text); }
+  .nav-btn.active { background: rgba(0,212,255,0.1); color: var(--accent); border-left: 2px solid var(--accent); }
+  .nav-btn .icon { font-size: 1rem; }
+
+  /* ── Main ── */
+  main { padding: 28px 32px; overflow-y: auto; max-height: calc(100vh - 65px); }
+
+  .page { display: none; animation: fadeIn 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 22px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+    color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before { content: '▸'; }
+
+  /* ── Code blocks ── */
+  .code-block {
+    background: #060a12; border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px; overflow-x: auto;
+    font-size: 0.78rem; line-height: 1.7; position: relative;
+  }
+  .code-block pre { white-space: pre; }
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .st { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .nm { color: #f78c6c; }
+  .op { color: #89ddff; }
+
+  /* ── Result panel ── */
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-top: 16px; }
+  .result-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; text-align: center;
+  }
+  .result-card .label { font-size: 0.65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .result-card .value { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; }
+  .val-blue { color: var(--accent); }
+  .val-green { color: var(--green); }
+  .val-yellow { color: var(--yellow); }
+  .val-purple { color: #a78bfa; }
+
+  /* ── Input controls ── */
+  .controls { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .ctrl-group label { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 6px; }
+  .ctrl-group input[type=range] { width: 100%; accent-color: var(--accent); }
+  .ctrl-group .val-display { font-size: 0.85rem; color: var(--accent); text-align: right; }
+
+  /* ── Buttons ── */
+  .btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000; border: none; font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 0.82rem; padding: 10px 22px;
+    border-radius: 6px; cursor: pointer; letter-spacing: 0.5px;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-sm { padding: 6px 14px; font-size: 0.72rem; }
+
+  /* ── Progress bars ── */
+  .progress-wrap { margin: 10px 0; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
+  .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+
+  /* ── Log ── */
+  .log {
+    background: #060a12; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; font-size: 0.73rem; line-height: 1.8; max-height: 260px; overflow-y: auto;
+  }
+  .log .log-time { color: var(--muted); }
+  .log .log-ok { color: var(--green); }
+  .log .log-warn { color: var(--yellow); }
+  .log .log-info { color: var(--accent); }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th { background: var(--panel); color: var(--muted); text-align: left; padding: 10px 14px; font-weight: 400; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(0,212,255,0.03); }
+
+  /* ── Canvas chart ── */
+  canvas { border-radius: 8px; background: #060a12; border: 1px solid var(--border); }
+
+  .tag { display: inline-block; background: rgba(0,212,255,0.1); color: var(--accent); font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; margin: 2px; }
+
+  .section-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red { background: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>DR<span>FIS</span> &nbsp;|&nbsp; Dynamic Robust Fuzzy Inference System</h1>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span class="badge">RESEARCH IMPLEMENTATION</span>
+    <span style="font-size:0.7rem;color:var(--muted);">Kanakala Prudvi Pratap · LPU</span>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Sidebar -->
+  <aside>
+    <div class="nav-section">Architecture</div>
+    <button class="nav-btn active" onclick="showPage('overview')"><span class="icon">🏗</span> System Overview</button>
+    <button class="nav-btn" onclick="showPage('layer1')"><span class="icon">📥</span> Input Processing Layer</button>
+    <button class="nav-btn" onclick="showPage('layer2')"><span class="icon">⚙️</span> Fuzzy Engine Layer</button>
+    <button class="nav-btn" onclick="showPage('layer3')"><span class="icon">🛡</span> Robustness Check Layer</button>
+    <button class="nav-btn" onclick="showPage('layer4')"><span class="icon">📤</span> Output Generation Layer</button>
+
+    <div class="nav-section">Math & Algorithm</div>
+    <button class="nav-btn" onclick="showPage('math')"><span class="icon">∑</span> Mathematical Foundations</button>
+    <button class="nav-btn" onclick="showPage('uncertainty')"><span class="icon">📊</span> Uncertainty Quantification</button>
+    <button class="nav-btn" onclick="showPage('adaptive')"><span class="icon">🔄</span> Adaptive Parameter Update</button>
+
+    <div class="nav-section">Run & Evaluate</div>
+    <button class="nav-btn" onclick="showPage('simulator')"><span class="icon">▶</span> Live Simulator</button>
+    <button class="nav-btn" onclick="showPage('benchmark')"><span class="icon">📈</span> Benchmark Results</button>
+    <button class="nav-btn" onclick="showPage('fullcode')"><span class="icon">📄</span> Full Python Code</button>
+  </aside>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- ══════════════ PAGE: OVERVIEW ══════════════ -->
+    <div class="page active" id="page-overview">
+      <div class="card">
+        <div class="card-title">System Architecture – 4-Layer Hierarchical DRFIS</div>
+        <p class="section-desc">
+          The Dynamic Robust Fuzzy Inference System addresses key gaps in conventional FIS: no integrated uncertainty handling, 
+          no adaptive robustness analysis, and fixed rule sets. DRFIS introduces 4 modular layers with self-calibrating rules, 
+          real-time uncertainty propagation, and stability-guaranteed inference.
+        </p>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">
+          <div class="result-card" style="border-left:3px solid var(--accent);">
+            <div class="label">Layer 1</div>
+            <div style="color:var(--accent);font-weight:700;font-size:0.9rem;">Input Processing</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;">Normalization · Variance Analysis · Adaptive Transform</div>
+          </div>
+          <div class="result-card" style="border-left:3px solid #7c3aed;">
+            <div class="label">Layer 2</div>
+            <div style="color:#a78bfa;font-weight:700;font-size:0.9rem;">Fuzzy Engine</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;">Rule Base · Inference Mechanism · Aggregation Unit</div>
+          </div>
+          <div class="result-card" style="border-left:3px solid var(--yellow);">
+            <div class="label">Layer 3</div>
+            <div style="color:var(--yellow);font-weight:700;font-size:0.9rem;">Robustness Check</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;">Sensitivity Analysis · Stability Score · Adaptive Threshold</div>
+          </div>
+          <div class="result-card" style="border-left:3px solid var(--green);">
+            <div class="label">Layer 4</div>
+            <div style="color:var(--green);font-weight:700;font-size:0.9rem;">Output Generation</div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;">Defuzzification · Confidence Score · Validation</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Key Performance Metrics (Table I from Paper)</div>
+        <table>
+          <thead><tr><th>Metric</th><th>Proposed DRFIS</th><th>Traditional FIS</th><th>Type-2 FIS</th></tr></thead>
+          <tbody>
+            <tr><td>Accuracy</td><td style="color:var(--green)">91.7%</td><td>84.9%</td><td>85.2%</td></tr>
+            <tr><td>Robustness Index</td><td style="color:var(--green)">0.91</td><td>0.76</td><td>0.76</td></tr>
+            <tr><td>Response Time</td><td>14 ms</td><td>13 ms</td><td>14 ms</td></tr>
+            <tr><td>Memory Usage</td><td>46 MB</td><td>37 MB</td><td>62 MB</td></tr>
+            <tr><td>Uncertainty Reduction</td><td style="color:var(--green)">15%</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: LAYER 1 ══════════════ -->
+    <div class="page" id="page-layer1">
+      <div class="card">
+        <div class="card-title">Layer 1 – Input Processing Layer</div>
+        <p class="section-desc">Standardizes raw data, detects uncertainty, applies variance analysis and adaptive transformations.</p>
+        <div class="code-block"><pre>
+<span class="cm">##############################################################</span>
+<span class="cm">#  DRFIS – Layer 1: Input Processing Layer                  #</span>
+<span class="cm">#  Author : Kanakala Prudvi Pratap, LPU                     #</span>
+<span class="cm">##############################################################</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> typing <span class="kw">import</span> List, Dict, Tuple, Optional
+
+<span class="cm"># ─── Data Structures ────────────────────────────────────────</span>
+
+@dataclass
+<span class="kw">class</span> <span class="fn">InputBundle</span>:
+    <span class="st">"""Holds a single input sample plus its uncertainty metadata."""</span>
+    raw_values  : np.ndarray
+    normalized  : np.ndarray = field(default_factory=<span class="kw">lambda</span>: np.array([]))
+    aleatory_u  : <span class="fn">float</span> = <span class="nm">0.0</span>   <span class="cm"># Ua – statistical variance</span>
+    epistemic_u : <span class="fn">float</span> = <span class="nm">0.0</span>   <span class="cm"># Ue – systematic uncertainty</span>
+    total_u     : <span class="fn">float</span> = <span class="nm">0.0</span>   <span class="cm"># Utotal = Ua + Ue  (Eq. 8)</span>
+    delta       : <span class="fn">float</span> = <span class="nm">0.0</span>   <span class="cm"># δ – uncertainty parameter (Eq. 5)</span>
+
+<span class="cm"># ─── Input Processing Layer ─────────────────────────────────</span>
+
+<span class="kw">class</span> <span class="fn">InputProcessingLayer</span>:
+    <span class="st">"""
+    First layer of DRFIS.
+    Responsibilities:
+      1. Normalize / feature-scale inputs
+      2. Compute aleatory uncertainty  Ua  (Eq. 9)
+      3. Compute epistemic uncertainty Ue  (Eq. 10)
+      4. Compute total uncertainty     Utotal (Eq. 8)
+      5. Compute uncertainty parameter δ   (Eq. 5)
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, feature_range: Tuple[float,float] = (<span class="nm">0.0</span>, <span class="nm">1.0</span>)):
+        self.feature_range = feature_range
+        self.scaler_min: Optional[np.ndarray] = <span class="kw">None</span>
+        self.scaler_max: Optional[np.ndarray] = <span class="kw">None</span>
+        self.sigma_inherent : <span class="fn">float</span> = <span class="nm">0.1</span>   <span class="cm"># σi  – inherent noise std</span>
+        self.sigma_env      : <span class="fn">float</span> = <span class="nm">0.05</span>  <span class="cm"># σe  – environmental noise</span>
+
+    <span class="kw">def</span> <span class="fn">fit</span>(self, dataset: np.ndarray) -> <span class="st">"InputProcessingLayer"</span>:
+        <span class="st">"""Compute normalization bounds from a training dataset."""</span>
+        self.scaler_min = dataset.min(axis=<span class="nm">0</span>)
+        self.scaler_max = dataset.max(axis=<span class="nm">0</span>)
+        <span class="kw">return</span> self
+
+    <span class="kw">def</span> <span class="fn">normalize</span>(self, x: np.ndarray) -> np.ndarray:
+        <span class="st">"""Min-max normalization to [feature_range]."""</span>
+        lo, hi = self.feature_range
+        rng = self.scaler_max - self.scaler_min
+        rng[rng == <span class="nm">0</span>] = <span class="nm">1</span>  <span class="cm"># avoid div-by-zero</span>
+        <span class="kw">return</span> lo + (x - self.scaler_min) / rng * (hi - lo)
+
+    <span class="kw">def</span> <span class="fn">aleatory_uncertainty</span>(self, x: np.ndarray) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Eq. 9:  Ua = sqrt( (1/N) * Σ(xi - μ)² )
+        Measures statistical variance of the input sample.
+        """</span>
+        mu = x.mean()
+        <span class="kw">return</span> float(np.sqrt(np.mean((x - mu) ** <span class="nm">2</span>)))
+
+    <span class="kw">def</span> <span class="fn">epistemic_uncertainty</span>(
+            self, x_estimated: np.ndarray, x_actual: np.ndarray) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Eq. 10: Ue = max(|x̂i - xi|) / √N
+        Measures systematic deviation between estimated and actual values.
+        """</span>
+        N = len(x_actual)
+        <span class="kw">return</span> float(np.max(np.abs(x_estimated - x_actual)) / np.sqrt(N))
+
+    <span class="kw">def</span> <span class="fn">compute_delta</span>(
+            self, sigma_i: <span class="fn">float</span>, sigma_e: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Eq. 5:  δ = √(σi² + σe²)
+        Combined uncertainty parameter used in membership bounds.
+        """</span>
+        <span class="kw">return</span> float(np.sqrt(sigma_i**<span class="nm">2</span> + sigma_e**<span class="nm">2</span>))
+
+    <span class="kw">def</span> <span class="fn">process</span>(
+            self,
+            raw: np.ndarray,
+            estimated: Optional[np.ndarray] = <span class="kw">None</span>) -> InputBundle:
+        <span class="st">"""Full pipeline: normalize → quantify uncertainty → return bundle."""</span>
+        normalized = self.normalize(raw)
+
+        <span class="cm"># Aleatory (Eq. 9)</span>
+        Ua = self.aleatory_uncertainty(normalized)
+
+        <span class="cm"># Epistemic (Eq. 10) – use self-estimate if not provided</span>
+        x_est = estimated <span class="kw">if</span> estimated <span class="kw">is not None else</span> normalized * <span class="nm">1.02</span>
+        Ue = self.epistemic_uncertainty(x_est, normalized)
+
+        <span class="cm"># Total uncertainty (Eq. 8)</span>
+        U_total = Ua + Ue
+
+        <span class="cm"># δ parameter (Eq. 5)</span>
+        delta = self.compute_delta(self.sigma_inherent, self.sigma_env)
+
+        <span class="kw">return</span> InputBundle(
+            raw_values  = raw,
+            normalized  = normalized,
+            aleatory_u  = Ua,
+            epistemic_u = Ue,
+            total_u     = U_total,
+            delta       = delta
+        )
+</pre></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: LAYER 2 ══════════════ -->
+    <div class="page" id="page-layer2">
+      <div class="card">
+        <div class="card-title">Layer 2 – Fuzzy Engine (Inference Processing Layer)</div>
+        <p class="section-desc">Core of DRFIS: uncertainty-aware membership functions, adaptive rule weights, dynamic inference engine.</p>
+        <div class="code-block"><pre>
+<span class="cm">##############################################################</span>
+<span class="cm">#  DRFIS – Layer 2: Fuzzy Engine (Inference Layer)          #</span>
+<span class="cm">##############################################################</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> typing <span class="kw">import</span> List, Dict, Callable, Tuple
+
+<span class="cm"># ─── Uncertainty-Aware Membership Functions ─────────────────</span>
+
+<span class="kw">class</span> <span class="fn">UncertaintyAwareMF</span>:
+    <span class="st">"""
+    Gaussian membership function with uncertainty bounds.
+
+    Lower bound  μL(x) = exp( -(x-d)² / 2(σ+δ)² )   Eq. 3
+    Upper bound  μU(x) = exp( -(x-d)² / 2(σ-δ)² )   Eq. 4
+
+    d : center parameter
+    σ : standard deviation (width)
+    δ : uncertainty parameter from InputProcessingLayer
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, center: <span class="fn">float</span>, sigma: <span class="fn">float</span>,
+                 learning_rate: <span class="fn">float</span> = <span class="nm">0.01</span>):
+        self.d  = center
+        self.sigma = sigma
+        self.eta   = learning_rate
+
+    <span class="kw">def</span> <span class="fn">lower_bound</span>(self, x: <span class="fn">float</span>, delta: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""Eq. 3 – lower membership (wider Gaussian = more uncertain)."""</span>
+        denom = <span class="nm">2</span> * (self.sigma + delta) ** <span class="nm">2</span>
+        <span class="kw">if</span> denom <= <span class="nm">0</span>: <span class="kw">return</span> <span class="nm">0.0</span>
+        <span class="kw">return</span> float(np.exp(-((x - self.d)**<span class="nm">2</span>) / denom))
+
+    <span class="kw">def</span> <span class="fn">upper_bound</span>(self, x: <span class="fn">float</span>, delta: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""Eq. 4 – upper membership (narrower Gaussian = less uncertain)."""</span>
+        sigma_eff = max(self.sigma - delta, <span class="nm">1e-6</span>)
+        denom = <span class="nm">2</span> * sigma_eff ** <span class="nm">2</span>
+        <span class="kw">return</span> float(np.exp(-((x - self.d)**<span class="nm">2</span>) / denom))
+
+    <span class="kw">def</span> <span class="fn">crisp</span>(self, x: <span class="fn">float</span>, delta: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""Midpoint of [lower, upper] used as crisp activation."""</span>
+        <span class="kw">return</span> (self.lower_bound(x, delta) + self.upper_bound(x, delta)) / <span class="nm">2</span>
+
+    <span class="kw">def</span> <span class="fn">adapt</span>(self,
+              grad_center: <span class="fn">float</span>,
+              grad_sigma : <span class="fn">float</span>) -> <span class="kw">None</span>:
+        <span class="st">"""
+        Eq. 6 & 7 – Adaptive Parameter Adjustment
+          d(t+1) = d(t) + η∇c(t)
+          σ(t+1) = σ(t) + η∇σ(t)
+        """</span>
+        self.d     += self.eta * grad_center
+        self.sigma  = max(<span class="nm">0.01</span>, self.sigma + self.eta * grad_sigma)
+
+<span class="cm"># ─── Fuzzy Rule ─────────────────────────────────────────────</span>
+
+@dataclass
+<span class="kw">class</span> <span class="fn">FuzzyRule</span>:
+    antecedents : List[Tuple[<span class="fn">int</span>, <span class="fn">str</span>]]  <span class="cm"># [(feature_idx, label), ...]</span>
+    consequent  : <span class="fn">float</span>                   <span class="cm"># crisp output value</span>
+    weight      : <span class="fn">float</span> = <span class="nm">1.0</span>
+
+<span class="cm"># ─── Fuzzy Engine ────────────────────────────────────────────</span>
+
+<span class="kw">class</span> <span class="fn">FuzzyEngine</span>:
+    <span class="st">"""
+    Dynamic rule-based fuzzy inference engine.
+    Uses Mamdani-style min-activation with centroid defuzzification.
+    Rule weights are adapted based on confidence level in real-time.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.mf_library : Dict[str, UncertaintyAwareMF] = {}
+        self.rules      : List[FuzzyRule] = []
+
+    <span class="kw">def</span> <span class="fn">add_mf</span>(self, label: <span class="fn">str</span>, mf: UncertaintyAwareMF) -> <span class="kw">None</span>:
+        self.mf_library[label] = mf
+
+    <span class="kw">def</span> <span class="fn">add_rule</span>(self, rule: FuzzyRule) -> <span class="kw">None</span>:
+        self.rules.append(rule)
+
+    <span class="kw">def</span> <span class="fn">_activate_rule</span>(
+            self,
+            rule: FuzzyRule,
+            x: np.ndarray,
+            delta: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""Min-AND aggregation of antecedent activations."""</span>
+        activations = []
+        <span class="kw">for</span> feat_idx, label <span class="kw">in</span> rule.antecedents:
+            mf = self.mf_library.get(label)
+            <span class="kw">if</span> mf <span class="kw">is None</span>:
+                activations.append(<span class="nm">0.0</span>)
+                <span class="kw">continue</span>
+            activations.append(mf.crisp(x[feat_idx], delta))
+        <span class="kw">return</span> min(activations) <span class="kw">if</span> activations <span class="kw">else</span> <span class="nm">0.0</span>
+
+    <span class="kw">def</span> <span class="fn">infer</span>(
+            self,
+            x: np.ndarray,
+            delta: <span class="fn">float</span>,
+            confidence: <span class="fn">float</span> = <span class="nm">1.0</span>) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Weighted centroid defuzzification.
+        rule weights updated by confidence level.
+        """</span>
+        weighted_sum = <span class="nm">0.0</span>
+        weight_total = <span class="nm">0.0</span>
+
+        <span class="kw">for</span> rule <span class="kw">in</span> self.rules:
+            activation = self._activate_rule(rule, x, delta)
+            effective_w = rule.weight * confidence * activation
+            weighted_sum += effective_w * rule.consequent
+            weight_total += effective_w
+
+        <span class="kw">if</span> weight_total == <span class="nm">0</span>:
+            <span class="kw">return</span> <span class="nm">0.5</span>  <span class="cm"># neutral output</span>
+        <span class="kw">return</span> float(weighted_sum / weight_total)
+
+    <span class="kw">def</span> <span class="fn">update_rule_weights</span>(
+            self,
+            confidence_map: Dict[<span class="fn">int</span>, <span class="fn">float</span>]) -> <span class="kw">None</span>:
+        <span class="st">"""Real-time rule weight update based on confidence level."""</span>
+        <span class="kw">for</span> i, rule <span class="kw">in</span> enumerate(self.rules):
+            <span class="kw">if</span> i <span class="kw">in</span> confidence_map:
+                rule.weight = float(np.clip(confidence_map[i], <span class="nm">0.1</span>, <span class="nm">2.0</span>))
+</pre></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: LAYER 3 ══════════════ -->
+    <div class="page" id="page-layer3">
+      <div class="card">
+        <div class="card-title">Layer 3 – Robustness Check Layer</div>
+        <p class="section-desc">Sensitivity analysis, stability scoring, adaptive thresholds, uncertainty propagation through rules (Eq. 11).</p>
+        <div class="code-block"><pre>
+<span class="cm">##############################################################</span>
+<span class="cm">#  DRFIS – Layer 3: Robustness Check Layer                  #</span>
+<span class="cm">##############################################################</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">class</span> <span class="fn">RobustnessCheckLayer</span>:
+    <span class="st">"""
+    Monitors system stability and detects perturbations.
+    Key functions:
+      - sensitivity_analysis()  : dOutput/dInput numerical gradient
+      - uncertainty_propagation(): Eq. 11 – Uout = √Σ(∂f/∂xi)²·Uin²
+      - compute_robustness_score(): composite stability metric
+      - adaptive_threshold()    : dynamic pass/fail threshold
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(
+            self,
+            base_threshold: <span class="fn">float</span> = <span class="nm">0.85</span>,
+            history_window : <span class="fn">int</span>   = <span class="nm">20</span>):
+        self.base_threshold  = base_threshold
+        self.history_window  = history_window
+        self.output_history  : list = []
+        self.sensitivity_history : list = []
+
+    <span class="cm"># ── Sensitivity Analysis ────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">sensitivity_analysis</span>(
+            self,
+            infer_fn,
+            x       : np.ndarray,
+            delta   : <span class="fn">float</span>,
+            epsilon : <span class="fn">float</span> = <span class="nm">1e-3</span>) -> np.ndarray:
+        <span class="st">"""
+        Numerical Jacobian: ∂output/∂xi  for each feature i.
+        Uses central finite-difference: (f(x+ε) - f(x-ε)) / 2ε
+        """</span>
+        base_out = infer_fn(x, delta)
+        grads = np.zeros(len(x))
+
+        <span class="kw">for</span> i <span class="kw">in range</span>(len(x)):
+            x_plus  = x.copy(); x_plus[i]  += epsilon
+            x_minus = x.copy(); x_minus[i] -= epsilon
+            grads[i] = (infer_fn(x_plus, delta) -
+                        infer_fn(x_minus, delta)) / (<span class="nm">2</span> * epsilon)
+        <span class="kw">return</span> grads
+
+    <span class="cm"># ── Uncertainty Propagation (Eq. 11) ────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">uncertainty_propagation</span>(
+            self,
+            sensitivity_coeffs : np.ndarray,   <span class="cm"># ∂f/∂xi</span>
+            input_uncertainties: np.ndarray    <span class="cm"># Uin_i</span>
+    ) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Eq. 11:  Uout = √( Σ (∂f/∂xi)² · Uin_i² )
+        Propagates input uncertainty through the inference function.
+        """</span>
+        <span class="kw">return</span> float(np.sqrt(
+            np.sum((sensitivity_coeffs ** <span class="nm">2</span>) * (input_uncertainties ** <span class="nm">2</span>))
+        ))
+
+    <span class="cm"># ── Robustness Score ────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">compute_robustness_score</span>(
+            self,
+            output         : <span class="fn">float</span>,
+            Uout           : <span class="fn">float</span>,
+            sensitivity_mag: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Composite robustness score ∈ [0, 1].
+        Higher score = more stable and reliable decision.
+
+        score = (1 - Uout_norm) * (1 - sensitivity_norm) * stability_bonus
+        """</span>
+        self.output_history.append(output)
+        <span class="kw">if</span> len(self.output_history) > self.history_window:
+            self.output_history.pop(<span class="nm">0</span>)
+
+        <span class="cm"># Temporal stability: low std dev over recent outputs = stable</span>
+        hist_arr = np.array(self.output_history)
+        stability = <span class="nm">1.0</span> - min(<span class="nm">1.0</span>, np.std(hist_arr) * <span class="nm">5</span>)
+
+        <span class="cm"># Normalize metrics (clip to [0,1])</span>
+        Uout_norm  = min(<span class="nm">1.0</span>, Uout)
+        sens_norm  = min(<span class="nm">1.0</span>, sensitivity_mag / <span class="nm">10.0</span>)
+
+        score = (<span class="nm">1</span> - Uout_norm) * <span class="nm">0.4</span> + \
+                (<span class="nm">1</span> - sens_norm)  * <span class="nm">0.3</span> + \
+                stability         * <span class="nm">0.3</span>
+        <span class="kw">return</span> float(np.clip(score, <span class="nm">0.0</span>, <span class="nm">1.0</span>))
+
+    <span class="cm"># ── Adaptive Threshold ──────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">adaptive_threshold</span>(self) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Dynamically adjusts pass threshold based on recent robustness history.
+        In noisy periods, threshold is relaxed; in stable periods, tightened.
+        """</span>
+        <span class="kw">if not</span> self.sensitivity_history:
+            <span class="kw">return</span> self.base_threshold
+        avg_sens = np.mean(self.sensitivity_history[-self.history_window:])
+        adjustment = float(np.clip(avg_sens * <span class="nm">0.05</span>, -<span class="nm">0.1</span>, <span class="nm">0.1</span>))
+        <span class="kw">return</span> float(np.clip(self.base_threshold - adjustment, <span class="nm">0.5</span>, <span class="nm">0.99</span>))
+
+    <span class="kw">def</span> <span class="fn">check</span>(
+            self,
+            robustness_score: <span class="fn">float</span>) -> Tuple[<span class="fn">bool</span>, <span class="fn">float</span>]:
+        <span class="st">"""
+        Returns (PASS, threshold).
+        PASS → proceed to Output Layer.
+        FAIL → route to Adaptive Tuning module.
+        """</span>
+        threshold = self.adaptive_threshold()
+        passed    = robustness_score >= threshold
+        <span class="kw">return</span> passed, threshold
+</pre></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: LAYER 4 ══════════════ -->
+    <div class="page" id="page-layer4">
+      <div class="card">
+        <div class="card-title">Layer 4 – Output Generation Layer</div>
+        <p class="section-desc">Defuzzification, confidence scoring, output validation, and final decision production.</p>
+        <div class="code-block"><pre>
+<span class="cm">##############################################################</span>
+<span class="cm">#  DRFIS – Layer 4: Output Generation Layer                 #</span>
+<span class="cm">##############################################################</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+@dataclass
+<span class="kw">class</span> <span class="fn">Decision</span>:
+    crisp_output     : <span class="fn">float</span>
+    confidence       : <span class="fn">float</span>
+    robustness_score : <span class="fn">float</span>
+    uncertainty_out  : <span class="fn">float</span>
+    label            : <span class="fn">str</span>
+    valid            : <span class="fn">bool</span>
+
+<span class="kw">class</span> <span class="fn">OutputGenerationLayer</span>:
+    <span class="st">"""
+    Final DRFIS layer.
+    1. Defuzzification (centroid / weighted average)
+    2. Confidence scoring from robustness index + uncertainty
+    3. Output validation against min confidence threshold
+    4. Semantic labelling of decisions
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(
+            self,
+            min_confidence: <span class="fn">float</span> = <span class="nm">0.6</span>,
+            labels        : List[str] = <span class="kw">None</span>):
+        self.min_confidence = min_confidence
+        self.labels = labels <span class="kw">or</span> [
+            <span class="st">"Very Low"</span>, <span class="st">"Low"</span>, <span class="st">"Medium"</span>, <span class="st">"High"</span>, <span class="st">"Very High"</span>
+        ]
+
+    <span class="kw">def</span> <span class="fn">confidence_score</span>(
+            self,
+            robustness  : <span class="fn">float</span>,
+            U_out       : <span class="fn">float</span>) -> <span class="fn">float</span>:
+        <span class="st">"""
+        Confidence = robustness × (1 – normalized_Uout)
+        Penalises outputs with high propagated uncertainty.
+        """</span>
+        penalty = min(<span class="nm">1.0</span>, U_out * <span class="nm">2</span>)
+        <span class="kw">return</span> float(np.clip(robustness * (<span class="nm">1</span> - penalty), <span class="nm">0.0</span>, <span class="nm">1.0</span>))
+
+    <span class="kw">def</span> <span class="fn">label_output</span>(self, crisp: <span class="fn">float</span>) -> <span class="fn">str</span>:
+        <span class="st">"""Map crisp output in [0,1] to semantic label."""</span>
+        n = len(self.labels)
+        idx = int(np.floor(crisp * n))
+        idx = min(idx, n - <span class="nm">1</span>)
+        <span class="kw">return</span> self.labels[idx]
+
+    <span class="kw">def</span> <span class="fn">validate</span>(
+            self,
+            crisp     : <span class="fn">float</span>,
+            confidence: <span class="fn">float</span>) -> <span class="fn">bool</span>:
+        <span class="st">"""
+        Validation criteria:
+          ✔ output in [0, 1]
+          ✔ confidence ≥ min_confidence
+        """</span>
+        <span class="kw">return</span> (<span class="nm">0.0</span> <= crisp <= <span class="nm">1.0</span>) <span class="kw">and</span> (confidence >= self.min_confidence)
+
+    <span class="kw">def</span> <span class="fn">generate</span>(
+            self,
+            raw_output       : <span class="fn">float</span>,
+            robustness_score : <span class="fn">float</span>,
+            U_out            : <span class="fn">float</span>) -> Decision:
+        <span class="st">"""Full output pipeline → returns Decision dataclass."""</span>
+        crisp      = float(np.clip(raw_output, <span class="nm">0.0</span>, <span class="nm">1.0</span>))
+        confidence = self.confidence_score(robustness_score, U_out)
+        label      = self.label_output(crisp)
+        valid      = self.validate(crisp, confidence)
+
+        <span class="kw">return</span> Decision(
+            crisp_output     = crisp,
+            confidence       = confidence,
+            robustness_score = robustness_score,
+            uncertainty_out  = U_out,
+            label            = label,
+            valid            = valid
+        )
+</pre></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: MATH ══════════════ -->
+    <div class="page" id="page-math">
+      <div class="card">
+        <div class="card-title">Mathematical Foundations – All Equations Implemented</div>
+        <table>
+          <thead><tr><th>Eq.</th><th>Name</th><th>Formula</th><th>Code Location</th></tr></thead>
+          <tbody>
+            <tr><td>1-2</td><td>Fuzzy Set Definition</td><td>B = {(x, μB(x)) | x ∈ X}</td><td>UncertaintyAwareMF.__init__</td></tr>
+            <tr><td>3</td><td>Lower Bound MF</td><td>μL(x) = exp(-(x-d)² / 2(σ+δ)²)</td><td>UncertaintyAwareMF.lower_bound()</td></tr>
+            <tr><td>4</td><td>Upper Bound MF</td><td>μU(x) = exp(-(x-d)² / 2(σ-δ)²)</td><td>UncertaintyAwareMF.upper_bound()</td></tr>
+            <tr><td>5</td><td>Uncertainty Parameter δ</td><td>δ = √(σi² + σe²)</td><td>InputProcessingLayer.compute_delta()</td></tr>
+            <tr><td>6</td><td>Center Adaptation</td><td>d(t+1) = d(t) + η∇c(t)</td><td>UncertaintyAwareMF.adapt()</td></tr>
+            <tr><td>7</td><td>Width Adaptation</td><td>σ(t+1) = σ(t) + η∇σ(t)</td><td>UncertaintyAwareMF.adapt()</td></tr>
+            <tr><td>8</td><td>Total Uncertainty</td><td>Utotal = Ua + Ue</td><td>InputProcessingLayer.process()</td></tr>
+            <tr><td>9</td><td>Aleatory Uncertainty</td><td>Ua = √((1/N)·Σ(xi-μ)²)</td><td>InputProcessingLayer.aleatory_uncertainty()</td></tr>
+            <tr><td>10</td><td>Epistemic Uncertainty</td><td>Ue = max(|x̂i-xi|) / √N</td><td>InputProcessingLayer.epistemic_uncertainty()</td></tr>
+            <tr><td>11</td><td>Uncertainty Propagation</td><td>Uout = √Σ(∂f/∂xi)²·Uin²</td><td>RobustnessCheckLayer.uncertainty_propagation()</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: UNCERTAINTY ══════════════ -->
+    <div class="page" id="page-uncertainty">
+      <div class="card">
+        <div class="card-title">Uncertainty Quantification Module</div>
+        <div class="code-block"><pre>
+<span class="cm">##############################################################</span>
+<span class="cm">#  DRFIS – Uncertainty Quantification Standalone Module     #</span>
+<span class="cm">##############################################################</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">class</span> <span class="fn">UncertaintyQuantifier</span>:
+    <span class="st">"""
+    Standalone module to compute, track and report all
+    uncertainty metrics used in the DRFIS pipeline.
+    Covers both aleatory (random) and epistemic (systematic) forms.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.history = {<span class="st">"Ua"</span>: [], <span class="st">"Ue"</span>: [], <span class="st">"Utotal"</span>: [], <span class="st">"delta"</span>: [], <span class="st">"Uout"</span>: []}
+
+    <span class="cm"># ── Aleatory (Eq. 9) ────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">aleatory</span>(self, samples: np.ndarray) -> <span class="fn">float</span>:
+        <span class="st">"""Statistical variance component of uncertainty."""</span>
+        Ua = float(np.sqrt(np.mean((samples - samples.mean())**<span class="nm">2</span>)))
+        self.history[<span class="st">"Ua"</span>].append(Ua)
+        <span class="kw">return</span> Ua
+
+    <span class="cm"># ── Epistemic (Eq. 10) ──────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">epistemic</span>(
+            self,
+            x_hat: np.ndarray,   <span class="cm"># estimated</span>
+            x    : np.ndarray    <span class="cm"># actual</span>
+    ) -> <span class="fn">float</span>:
+        <span class="st">"""Systematic deviation between model estimates and truth."""</span>
+        Ue = float(np.max(np.abs(x_hat - x)) / np.sqrt(len(x)))
+        self.history[<span class="st">"Ue"</span>].append(Ue)
+        <span class="kw">return</span> Ue
+
+    <span class="cm"># ── Total (Eq. 8) ────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">total</span>(self, Ua: <span class="fn">float</span>, Ue: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        Ut = Ua + Ue
+        self.history[<span class="st">"Utotal"</span>].append(Ut)
+        <span class="kw">return</span> Ut
+
+    <span class="cm"># ── Delta (Eq. 5) ─────────────────────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">delta</span>(self, sigma_i: <span class="fn">float</span>, sigma_e: <span class="fn">float</span>) -> <span class="fn">float</span>:
+        d = float(np.sqrt(sigma_i**<span class="nm">2</span> + sigma_e**<span class="nm">2</span>))
+        self.history[<span class="st">"delta"</span>].append(d)
+        <span class="kw">return</span> d
+
+    <span class="cm"># ── Output Propagation (Eq. 11) ──────────────────────────────</span>
+    <span class="kw">def</span> <span class="fn">output_propagation</span>(
+            self,
+            sensitivities   : np.ndarray,   <span class="cm"># ∂f/∂xi</span>
+            input_uncertainties: np.ndarray  <span class="cm"># Uin_i</span>
+    ) -> <span class="fn">float</span>:
+        Uout = float(np.sqrt(np.sum(
+            (sensitivities**<span class="nm">2</span>) * (input_uncertainties**<span class="nm">2</span>)
+        )))
+        self.history[<span class="st">"Uout"</span>].append(Uout)
+        <span class="kw">return</span> Uout
+
+    <span class="kw">def</span> <span class="fn">report</span>(self) -> Dict:
+        <span class="st">"""Summary statistics for each tracked metric."""</span>
+        rep = {}
+        <span class="kw">for</span> key, vals <span class="kw">in</span> self.history.items():
+            <span class="kw">if</span> vals:
+                rep[key] = {
+                    <span class="st">"mean"</span>: float(np.mean(vals)),
+                    <span class="st">"std" </span>: float(np.std(vals)),
+                    <span class="st">"min" </span>: float(np.min(vals)),
+                    <span class="st">"max" </span>: float(np.max(vals)),
+                }
+        <span class="kw">return</span> rep
+</pre></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: ADAPTIVE ══════════════ -->
+    <div class="page" id="page-adaptive">
+      <div class="card">
+        <div class="card-title">Adaptive Parameter Update – Eqs. 6 & 7</div>
+        <div class="code-block"><pre>
+<span class="cm">##############################################################</span>
+<span class="cm">#  DRFIS – Adaptive Tuning Module                           #</span>
+<span class="cm">#  Implements Eq.6 & Eq.7 (gradient-based parameter update) #</span>
+<span class="cm">##############################################################</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="kw">class</span> <span class="fn">AdaptiveTuner</span>:
+    <span class="st">"""
+    Called when Robustness Check FAILS.
+    Adjusts MF centers and widths using gradient descent.
+
+    Eq. 6:  d(t+1)  = d(t)  + η·∇c(t)
+    Eq. 7:  σ(t+1)  = σ(t)  + η·∇σ(t)
+
+    Gradient estimation via finite differences on inference output.
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(
+            self,
+            learning_rate  : <span class="fn">float</span> = <span class="nm">0.01</span>,
+            momentum       : <span class="fn">float</span> = <span class="nm">0.9</span>,
+            max_iterations : <span class="fn">int</span>   = <span class="nm">50</span>,
+            tol            : <span class="fn">float</span> = <span class="nm">1e-4</span>):
+        self.eta            = learning_rate
+        self.momentum       = momentum
+        self.max_iterations = max_iterations
+        self.tol            = tol
+        self._velocity_c    : Dict[str, float] = {}
+        self._velocity_s    : Dict[str, float] = {}
+
+    <span class="kw">def</span> <span class="fn">_estimate_grad_center</span>(
+            self, mf, x, delta, engine, epsilon=<span class="nm">1e-3</span>) -> <span class="fn">float</span>:
+        <span class="st">"""∂output/∂d via finite difference."""</span>
+        orig = mf.d
+        mf.d = orig + epsilon
+        f_plus  = engine.infer(x, delta)
+        mf.d = orig - epsilon
+        f_minus = engine.infer(x, delta)
+        mf.d = orig
+        <span class="kw">return</span> (f_plus - f_minus) / (<span class="nm">2</span> * epsilon)
+
+    <span class="kw">def</span> <span class="fn">_estimate_grad_sigma</span>(
+            self, mf, x, delta, engine, epsilon=<span class="nm">1e-3</span>) -> <span class="fn">float</span>:
+        <span class="st">"""∂output/∂σ via finite difference."""</span>
+        orig = mf.sigma
+        mf.sigma = max(<span class="nm">0.01</span>, orig + epsilon)
+        f_plus   = engine.infer(x, delta)
+        mf.sigma = max(<span class="nm">0.01</span>, orig - epsilon)
+        f_minus  = engine.infer(x, delta)
+        mf.sigma = orig
+        <span class="kw">return</span> (f_plus - f_minus) / (<span class="nm">2</span> * epsilon)
+
+    <span class="kw">def</span> <span class="fn">tune</span>(
+            self,
+            engine      : <span class="st">"FuzzyEngine"</span>,
+            x           : np.ndarray,
+            delta       : <span class="fn">float</span>,
+            target_output: <span class="fn">float</span>) -> <span class="fn">int</span>:
+        <span class="st">"""
+        Run adaptive gradient-descent tuning.
+        Returns number of iterations taken.
+        """</span>
+        <span class="kw">for</span> iteration <span class="kw">in range</span>(self.max_iterations):
+            current_out = engine.infer(x, delta)
+            error = target_output - current_out
+
+            <span class="kw">if</span> abs(error) < self.tol:
+                <span class="kw">break</span>
+
+            <span class="kw">for</span> label, mf <span class="kw">in</span> engine.mf_library.items():
+                grad_c = self._estimate_grad_center(mf, x, delta, engine)
+                grad_s = self._estimate_grad_sigma (mf, x, delta, engine)
+
+                <span class="cm"># Momentum update (Eq. 6 & 7 with momentum)</span>
+                vc = self._velocity_c.get(label, <span class="nm">0.0</span>)
+                vs = self._velocity_s.get(label, <span class="nm">0.0</span>)
+
+                vc = self.momentum * vc + self.eta * grad_c * error
+                vs = self.momentum * vs + self.eta * grad_s * error
+
+                self._velocity_c[label] = vc
+                self._velocity_s[label] = vs
+
+                mf.adapt(vc, vs)  <span class="cm"># applies Eq. 6 & 7</span>
+
+        <span class="kw">return</span> iteration + <span class="nm">1</span>
+</pre></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: LIVE SIMULATOR ══════════════ -->
+    <div class="page" id="page-simulator">
+      <div class="card">
+        <div class="card-title">Live DRFIS Simulator</div>
+        <p class="section-desc">Adjust input parameters and run the full DRFIS pipeline in real-time (JavaScript implementation of all equations).</p>
+
+        <div class="controls">
+          <div class="ctrl-group">
+            <label>Input x₁ (Feature 1)</label>
+            <input type="range" id="x1" min="0" max="1" step="0.01" value="0.6" oninput="updateSim()">
+            <div class="val-display" id="x1v">0.60</div>
+          </div>
+          <div class="ctrl-group">
+            <label>Input x₂ (Feature 2)</label>
+            <input type="range" id="x2" min="0" max="1" step="0.01" value="0.4" oninput="updateSim()">
+            <div class="val-display" id="x2v">0.40</div>
+          </div>
+          <div class="ctrl-group">
+            <label>σ Inherent (σᵢ)</label>
+            <input type="range" id="si" min="0.01" max="0.5" step="0.01" value="0.1" oninput="updateSim()">
+            <div class="val-display" id="siv">0.10</div>
+          </div>
+          <div class="ctrl-group">
+            <label>σ Environmental (σₑ)</label>
+            <input type="range" id="se" min="0.01" max="0.3" step="0.01" value="0.05" oninput="updateSim()">
+            <div class="val-display" id="sev">0.05</div>
+          </div>
+          <div class="ctrl-group">
+            <label>Learning Rate η</label>
+            <input type="range" id="eta" min="0.001" max="0.1" step="0.001" value="0.01" oninput="updateSim()">
+            <div class="val-display" id="etav">0.010</div>
+          </div>
+          <div class="ctrl-group">
+            <label>Noise Level</label>
+            <input type="range" id="noise" min="0" max="0.3" step="0.01" value="0.05" oninput="updateSim()">
+            <div class="val-display" id="noisev">0.05</div>
+          </div>
+        </div>
+
+        <button class="btn" onclick="runSimulation()">▶ Run Full DRFIS Pipeline</button>
+        <button class="btn btn-sm" style="margin-left:10px;background:var(--panel);color:var(--accent);border:1px solid var(--border);" onclick="resetSim()">↺ Reset</button>
+
+        <div class="result-grid" id="sim-results" style="margin-top:20px;"></div>
+
+        <div style="margin-top:20px;">
+          <div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;">Pipeline Log</div>
+          <div class="log" id="sim-log"></div>
+        </div>
+
+        <div style="margin-top:20px;">
+          <canvas id="simChart" width="700" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: BENCHMARK ══════════════ -->
+    <div class="page" id="page-benchmark">
+      <div class="card">
+        <div class="card-title">Benchmark Results – Comparison with Traditional FIS & Type-2 FIS</div>
+        <div class="result-grid">
+          <div class="result-card">
+            <div class="label">DRFIS Accuracy</div>
+            <div class="value val-green">91.7%</div>
+          </div>
+          <div class="result-card">
+            <div class="label">DRFIS Robustness</div>
+            <div class="value val-blue">0.91</div>
+          </div>
+          <div class="result-card">
+            <div class="label">Traditional FIS Accuracy</div>
+            <div class="value val-yellow">84.9%</div>
+          </div>
+          <div class="result-card">
+            <div class="label">Type-2 FIS Accuracy</div>
+            <div class="value val-yellow">85.2%</div>
+          </div>
+        </div>
+        <canvas id="benchChart" width="650" height="200" style="margin-top:20px;"></canvas>
+        <div style="margin-top:20px;">
+          <div class="progress-wrap">
+            <div class="progress-label"><span>DRFIS Accuracy</span><span>91.7%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:91.7%;background:var(--green);"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Traditional FIS</span><span>84.9%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:84.9%;background:var(--yellow);"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Type-2 FIS</span><span>85.2%</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:85.2%;background:var(--accent2);"></div></div>
+          </div>
+          <div class="progress-wrap" style="margin-top:16px;">
+            <div class="progress-label"><span>DRFIS Robustness Index</span><span>0.91</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:91%;background:var(--accent);"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Traditional FIS Robustness</span><span>0.76</span></div>
+            <div class="progress-bar"><div class="progress-fill" style="width:76%;background:var(--yellow);"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PAGE: FULL CODE ══════════════ -->
+    <div class="page" id="page-fullcode">
+      <div class="card">
+        <div class="card-title">Full DRFIS Python Implementation (drfis_complete.py)</div>
+        <p class="section-desc">Complete end-to-end DRFIS system — paste this into a .py file and run with Python 3.8+. Requires: numpy, scipy.</p>
+        <div class="code-block" style="max-height:520px;overflow-y:auto;"><pre>
+<span class="cm">#!/usr/bin/env python3</span>
+<span class="cm">"""</span>
+<span class="cm">drfis_complete.py</span>
+<span class="cm">─────────────────────────────────────────────────────────────────</span>
+<span class="cm">Dynamic Robust Fuzzy Inference System (DRFIS)</span>
+<span class="cm">Author  : Kanakala Prudvi Pratap</span>
+<span class="cm">Institute: Lovely Professional University, Punjab</span>
+<span class="cm">Email   : kanakalaprudvipratap@gmail.com</span>
+<span class="cm">─────────────────────────────────────────────────────────────────</span>
+<span class="cm">Implements all 11 equations from the paper.</span>
+<span class="cm">Layers: InputProcessing → FuzzyEngine → RobustnessCheck → OutputGeneration</span>
+<span class="cm">"""</span>
+
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> typing <span class="kw">import</span> List, Dict, Tuple, Optional
+<span class="kw">import</span> warnings
+warnings.filterwarnings(<span class="st">"ignore"</span>)
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  DATA CLASSES</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+@dataclass
+<span class="kw">class</span> <span class="fn">InputBundle</span>:
+    raw_values  : np.ndarray
+    normalized  : np.ndarray
+    aleatory_u  : <span class="fn">float</span>
+    epistemic_u : <span class="fn">float</span>
+    total_u     : <span class="fn">float</span>
+    delta       : <span class="fn">float</span>
+
+@dataclass
+<span class="kw">class</span> <span class="fn">FuzzyRule</span>:
+    antecedents : List[Tuple[<span class="fn">int</span>, <span class="fn">str</span>]]
+    consequent  : <span class="fn">float</span>
+    weight      : <span class="fn">float</span> = <span class="nm">1.0</span>
+
+@dataclass
+<span class="kw">class</span> <span class="fn">Decision</span>:
+    crisp_output     : <span class="fn">float</span>
+    confidence       : <span class="fn">float</span>
+    robustness_score : <span class="fn">float</span>
+    uncertainty_out  : <span class="fn">float</span>
+    label            : <span class="fn">str</span>
+    valid            : <span class="fn">bool</span>
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  LAYER 1 – INPUT PROCESSING</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="kw">class</span> <span class="fn">InputProcessingLayer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, sigma_i=<span class="nm">0.1</span>, sigma_e=<span class="nm">0.05</span>):
+        self.sigma_i = sigma_i
+        self.sigma_e = sigma_e
+        self.min_: Optional[np.ndarray] = <span class="kw">None</span>
+        self.max_: Optional[np.ndarray] = <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="fn">fit</span>(self, X: np.ndarray):
+        self.min_ = X.min(axis=<span class="nm">0</span>)
+        self.max_ = X.max(axis=<span class="nm">0</span>)
+        <span class="kw">return</span> self
+
+    <span class="kw">def</span> <span class="fn">normalize</span>(self, x):
+        rng = self.max_ - self.min_
+        rng[rng==<span class="nm">0</span>] = <span class="nm">1</span>
+        <span class="kw">return</span> (x - self.min_) / rng
+
+    <span class="kw">def</span> <span class="fn">process</span>(self, raw, estimated=<span class="kw">None</span>) -> InputBundle:
+        norm = self.normalize(raw)
+        mu   = norm.mean()
+        Ua   = float(np.sqrt(np.mean((norm - mu)**<span class="nm">2</span>)))                    <span class="cm"># Eq.9</span>
+        x_est = estimated <span class="kw">if</span> estimated <span class="kw">is not None else</span> norm * <span class="nm">1.02</span>
+        Ue    = float(np.max(np.abs(x_est - norm)) / np.sqrt(len(norm)))    <span class="cm"># Eq.10</span>
+        Ut    = Ua + Ue                                                      <span class="cm"># Eq.8</span>
+        delta = float(np.sqrt(self.sigma_i**<span class="nm">2</span> + self.sigma_e**<span class="nm">2</span>))        <span class="cm"># Eq.5</span>
+        <span class="kw">return</span> InputBundle(raw, norm, Ua, Ue, Ut, delta)
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  LAYER 2 – FUZZY ENGINE</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="kw">class</span> <span class="fn">MembershipFunction</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, center, sigma, eta=<span class="nm">0.01</span>):
+        self.d, self.sigma, self.eta = center, sigma, eta
+
+    <span class="kw">def</span> <span class="fn">lower</span>(self, x, delta) -> <span class="fn">float</span>:                    <span class="cm"># Eq.3</span>
+        denom = <span class="nm">2</span> * (self.sigma + delta)**<span class="nm">2</span>
+        <span class="kw">return</span> float(np.exp(-((x-self.d)**<span class="nm">2</span>)/max(denom,<span class="nm">1e-9</span>)))
+
+    <span class="kw">def</span> <span class="fn">upper</span>(self, x, delta) -> <span class="fn">float</span>:                    <span class="cm"># Eq.4</span>
+        s = max(self.sigma - delta, <span class="nm">1e-6</span>)
+        <span class="kw">return</span> float(np.exp(-((x-self.d)**<span class="nm">2</span>)/(<span class="nm">2</span>*s**<span class="nm">2</span>)))
+
+    <span class="kw">def</span> <span class="fn">crisp</span>(self, x, delta) -> <span class="fn">float</span>:
+        <span class="kw">return</span> (self.lower(x,delta) + self.upper(x,delta)) / <span class="nm">2</span>
+
+    <span class="kw">def</span> <span class="fn">adapt</span>(self, gc, gs):                               <span class="cm"># Eq.6 & 7</span>
+        self.d      += self.eta * gc
+        self.sigma   = max(<span class="nm">0.01</span>, self.sigma + self.eta * gs)
+
+<span class="kw">class</span> <span class="fn">FuzzyEngine</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.mfs   : Dict[str, MembershipFunction] = {}
+        self.rules : List[FuzzyRule] = []
+
+    <span class="kw">def</span> <span class="fn">add_mf</span>  (self, lbl, mf ): self.mfs[lbl] = mf
+    <span class="kw">def</span> <span class="fn">add_rule</span>(self, rule    ): self.rules.append(rule)
+
+    <span class="kw">def</span> <span class="fn">infer</span>(self, x, delta, confidence=<span class="nm">1.0</span>) -> <span class="fn">float</span>:
+        ws, wt = <span class="nm">0.0</span>, <span class="nm">0.0</span>
+        <span class="kw">for</span> r <span class="kw">in</span> self.rules:
+            acts = [self.mfs[lbl].crisp(x[i],delta)
+                    <span class="kw">for</span> i, lbl <span class="kw">in</span> r.antecedents
+                    <span class="kw">if</span> lbl <span class="kw">in</span> self.mfs]
+            a = min(acts) <span class="kw">if</span> acts <span class="kw">else</span> <span class="nm">0.0</span>
+            ew = r.weight * confidence * a
+            ws += ew * r.consequent
+            wt += ew
+        <span class="kw">return</span> ws/wt <span class="kw">if</span> wt > <span class="nm">0</span> <span class="kw">else</span> <span class="nm">0.5</span>
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  LAYER 3 – ROBUSTNESS CHECK</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="kw">class</span> <span class="fn">RobustnessCheckLayer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, base_thresh=<span class="nm">0.75</span>, window=<span class="nm">20</span>):
+        self.thresh  = base_thresh
+        self.history = []
+
+    <span class="kw">def</span> <span class="fn">sensitivity</span>(self, fn, x, delta, eps=<span class="nm">1e-3</span>):
+        g = np.zeros(len(x))
+        <span class="kw">for</span> i <span class="kw">in range</span>(len(x)):
+            xp, xm = x.copy(), x.copy()
+            xp[i]+=eps; xm[i]-=eps
+            g[i] = (fn(xp,delta) - fn(xm,delta)) / (<span class="nm">2</span>*eps)
+        <span class="kw">return</span> g
+
+    <span class="kw">def</span> <span class="fn">propagate</span>(self, sens, Uin):                        <span class="cm"># Eq.11</span>
+        <span class="kw">return</span> float(np.sqrt(np.sum((sens**<span class="nm">2</span>)*(Uin**<span class="nm">2</span>))))
+
+    <span class="kw">def</span> <span class="fn">score</span>(self, output, Uout, sens_mag) -> <span class="fn">float</span>:
+        self.history.append(output)
+        <span class="kw">if</span> len(self.history) > <span class="nm">20</span>: self.history.pop(<span class="nm">0</span>)
+        stab = <span class="nm">1.0</span> - min(<span class="nm">1.0</span>, np.std(self.history)*<span class="nm">5</span>)
+        s = (<span class="nm">1</span>-min(<span class="nm">1</span>,Uout))*<span class="nm">0.4</span> + (<span class="nm">1</span>-min(<span class="nm">1</span>,sens_mag/<span class="nm">10</span>))*<span class="nm">0.3</span> + stab*<span class="nm">0.3</span>
+        <span class="kw">return</span> float(np.clip(s,<span class="nm">0</span>,<span class="nm">1</span>))
+
+    <span class="kw">def</span> <span class="fn">check</span>(self, rob_score) -> Tuple[<span class="fn">bool</span>, <span class="fn">float</span>]:
+        <span class="kw">return</span> rob_score >= self.thresh, self.thresh
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  LAYER 4 – OUTPUT GENERATION</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+LABELS = [<span class="st">"Very Low"</span>, <span class="st">"Low"</span>, <span class="st">"Medium"</span>, <span class="st">"High"</span>, <span class="st">"Very High"</span>]
+
+<span class="kw">class</span> <span class="fn">OutputGenerationLayer</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, min_conf=<span class="nm">0.5</span>):
+        self.min_conf = min_conf
+
+    <span class="kw">def</span> <span class="fn">generate</span>(self, raw, rob, Uout) -> Decision:
+        crisp = float(np.clip(raw, <span class="nm">0</span>, <span class="nm">1</span>))
+        conf  = float(np.clip(rob * (<span class="nm">1</span> - min(<span class="nm">1</span>,Uout*<span class="nm">2</span>)), <span class="nm">0</span>, <span class="nm">1</span>))
+        lbl   = LABELS[min(int(crisp*<span class="nm">5</span>), <span class="nm">4</span>)]
+        valid = (<span class="nm">0</span><=crisp<=<span class="nm">1</span>) <span class="kw">and</span> (conf>=self.min_conf)
+        <span class="kw">return</span> Decision(crisp, conf, rob, Uout, lbl, valid)
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  DRFIS ORCHESTRATOR</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="kw">class</span> <span class="fn">DRFIS</span>:
+    <span class="st">"""
+    Full 4-layer DRFIS pipeline orchestrator.
+    Usage:
+        drfis = DRFIS.build_default()
+        decision = drfis.run(np.array([0.6, 0.4]))
+        print(decision)
+    """</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, ipl, engine, rcl, ogl):
+        self.ipl    = ipl
+        self.engine = engine
+        self.rcl    = rcl
+        self.ogl    = ogl
+        self.run_log = []
+
+    @<span class="fn">classmethod</span>
+    <span class="kw">def</span> <span class="fn">build_default</span>(cls) -> <span class="st">"DRFIS"</span>:
+        <span class="st">"""Build a default DRFIS with sample rules for 2-feature input."""</span>
+        <span class="cm"># --- Layer 1</span>
+        dummy = np.random.rand(<span class="nm">100</span>, <span class="nm">2</span>)
+        ipl = InputProcessingLayer(sigma_i=<span class="nm">0.10</span>, sigma_e=<span class="nm">0.05</span>)
+        ipl.fit(dummy)
+
+        <span class="cm"># --- Layer 2</span>
+        engine = FuzzyEngine()
+        <span class="kw">for</span> label, center <span class="kw">in</span> [(<span class="st">"low"</span>,<span class="nm">0.2</span>),(<span class="st">"medium"</span>,<span class="nm">0.5</span>),(<span class="st">"high"</span>,<span class="nm">0.8</span>)]:
+            engine.add_mf(label, MembershipFunction(center, <span class="nm">0.15</span>))
+
+        engine.add_rule(FuzzyRule([(<span class="nm">0</span>,<span class="st">"low"</span>),   (<span class="nm">1</span>,<span class="st">"low"</span>)],    <span class="nm">0.1</span>))
+        engine.add_rule(FuzzyRule([(<span class="nm">0</span>,<span class="st">"low"</span>),   (<span class="nm">1</span>,<span class="st">"medium"</span>)], <span class="nm">0.3</span>))
+        engine.add_rule(FuzzyRule([(<span class="nm">0</span>,<span class="st">"medium"</span>),(<span class="nm">1</span>,<span class="st">"medium"</span>)], <span class="nm">0.5</span>))
+        engine.add_rule(FuzzyRule([(<span class="nm">0</span>,<span class="st">"medium"</span>),(<span class="nm">1</span>,<span class="st">"high"</span>)],   <span class="nm">0.7</span>))
+        engine.add_rule(FuzzyRule([(<span class="nm">0</span>,<span class="st">"high"</span>),  (<span class="nm">1</span>,<span class="st">"high"</span>)],   <span class="nm">0.9</span>))
+
+        <span class="kw">return</span> cls(ipl, engine, RobustnessCheckLayer(), OutputGenerationLayer())
+
+    <span class="kw">def</span> <span class="fn">run</span>(self, raw: np.ndarray) -> Decision:
+        <span class="cm"># L1: Input Processing</span>
+        bundle = self.ipl.process(raw)
+
+        <span class="cm"># L2: Fuzzy Inference</span>
+        raw_out = self.engine.infer(bundle.normalized, bundle.delta)
+
+        <span class="cm"># L3: Robustness Check</span>
+        sens     = self.rcl.sensitivity(<span class="kw">lambda</span> x,d: self.engine.infer(x,d),
+                                        bundle.normalized, bundle.delta)
+        Uout     = self.rcl.propagate(sens, np.full(len(raw), bundle.total_u))
+        rob      = self.rcl.score(raw_out, Uout, float(np.linalg.norm(sens)))
+        passed, _ = self.rcl.check(rob)
+
+        <span class="cm"># If robustness fails → log warning (production would trigger AdaptiveTuner)</span>
+        <span class="kw">if not</span> passed:
+            print(<span class="st">f"[WARN] Robustness check FAILED (score={rob:.3f}). Tuning needed."</span>)
+
+        <span class="cm"># L4: Output</span>
+        decision = self.ogl.generate(raw_out, rob, Uout)
+        self.run_log.append(decision)
+        <span class="kw">return</span> decision
+
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+<span class="cm">#  MAIN – Demo Run</span>
+<span class="cm"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    print(<span class="st">"╔══════════════════════════════════════╗"</span>)
+    print(<span class="st">"║  DRFIS – Dynamic Robust FIS Demo     ║"</span>)
+    print(<span class="st">"╚══════════════════════════════════════╝\n"</span>)
+
+    drfis = DRFIS.build_default()
+
+    test_inputs = [
+        np.array([<span class="nm">0.6</span>, <span class="nm">0.4</span>]),
+        np.array([<span class="nm">0.2</span>, <span class="nm">0.8</span>]),
+        np.array([<span class="nm">0.9</span>, <span class="nm">0.9</span>]),
+        np.array([<span class="nm">0.1</span>, <span class="nm">0.1</span>]),
+        np.array([<span class="nm">0.5</span>, <span class="nm">0.5</span>]),
+    ]
+
+    <span class="kw">for</span> inp <span class="kw">in</span> test_inputs:
+        d = drfis.run(inp)
+        print(<span class="st">f"Input: {inp}  →  Output: {d.crisp_output:.3f}  |  "</span>
+              <span class="st">f"Label: {d.label:<span class="nm">10</span>}  |  Confidence: {d.confidence:.3f}  |  "</span>
+              <span class="st">f"Robustness: {d.robustness_score:.3f}  |  Valid: {d.valid}"</span>)
+</pre></div>
+        <div style="margin-top:14px;">
+          <button class="btn" onclick="downloadCode()">⬇ Download drfis_complete.py</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Navigation ──────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── DRFIS JavaScript Engine ──────────────────────────────────
+const Engine = {
+  gaussianMF(x, center, sigma) {
+    return Math.exp(-Math.pow(x - center, 2) / (2 * sigma * sigma));
+  },
+  membershipLower(x, d, sigma, delta) {
+    const denom = 2 * Math.pow(sigma + delta, 2);
+    return denom > 0 ? Math.exp(-Math.pow(x - d, 2) / denom) : 0;
+  },
+  membershipUpper(x, d, sigma, delta) {
+    const s = Math.max(sigma - delta, 1e-6);
+    return Math.exp(-Math.pow(x - d, 2) / (2 * s * s));
+  },
+  membershipCrisp(x, d, sigma, delta) {
+    return (this.membershipLower(x,d,sigma,delta) + this.membershipUpper(x,d,sigma,delta))/2;
+  },
+  aleatory(samples) {                     // Eq.9
+    const mu = samples.reduce((a,b)=>a+b,0)/samples.length;
+    return Math.sqrt(samples.reduce((s,x)=>s+Math.pow(x-mu,2),0)/samples.length);
+  },
+  epistemic(xhat, xact) {                 // Eq.10
+    const maxDiff = Math.max(...xhat.map((v,i)=>Math.abs(v-xact[i])));
+    return maxDiff / Math.sqrt(xact.length);
+  },
+  delta(si, se) {                         // Eq.5
+    return Math.sqrt(si*si + se*se);
+  },
+  propagate(sens, Uin) {                  // Eq.11
+    let s = 0;
+    for(let i=0;i<sens.length;i++) s += sens[i]*sens[i]*Uin[i]*Uin[i];
+    return Math.sqrt(s);
+  },
+  infer(x1, x2, delta) {
+    const rules = [
+      {ant:[[x1,'low'],[x2,'low']],     cons:0.1, w:1.0},
+      {ant:[[x1,'low'],[x2,'medium']],  cons:0.3, w:1.0},
+      {ant:[[x1,'medium'],[x2,'medium']],cons:0.5, w:1.0},
+      {ant:[[x1,'medium'],[x2,'high']], cons:0.7, w:1.0},
+      {ant:[[x1,'high'],[x2,'high']],   cons:0.9, w:1.0},
+    ];
+    const mfParams = {low:{d:0.2,s:0.15}, medium:{d:0.5,s:0.15}, high:{d:0.8,s:0.15}};
+    let ws=0,wt=0;
+    for(const r of rules) {
+      const acts = r.ant.map(([v,lbl])=>{
+        const p=mfParams[lbl];
+        return this.membershipCrisp(v, p.d, p.s, delta);
+      });
+      const a = Math.min(...acts);
+      ws += a * r.cons; wt += a;
+    }
+    return wt > 0 ? ws/wt : 0.5;
+  }
+};
+
+// ── History for chart ────────────────────────────────────────
+let simHistory = {out:[], rob:[], conf:[]};
+
+function updateSim() {
+  ['x1','x2','si','se','eta','noise'].forEach(id=>{
+    const v = parseFloat(document.getElementById(id).value);
+    document.getElementById(id+'v').textContent = v.toFixed(id==='eta'?3:2);
+  });
+}
+
+function runSimulation() {
+  const x1    = parseFloat(document.getElementById('x1').value);
+  const x2    = parseFloat(document.getElementById('x2').value);
+  const si    = parseFloat(document.getElementById('si').value);
+  const se    = parseFloat(document.getElementById('se').value);
+  const noise = parseFloat(document.getElementById('noise').value);
+
+  const samples = Array.from({length:10},()=> x1 + (Math.random()-0.5)*noise*2);
+
+  // L1
+  const Ua    = Engine.aleatory(samples);
+  const xhat  = samples.map(v=>v*1.02);
+  const Ue    = Engine.epistemic(xhat, samples);
+  const Utotal= Ua + Ue;
+  const delta = Engine.delta(si, se);
+
+  // L2
+  const rawOut = Engine.infer(x1, x2, delta);
+
+  // L3 – simple sensitivity
+  const eps=0.01;
+  const s1 = (Engine.infer(x1+eps,x2,delta)-Engine.infer(x1-eps,x2,delta))/(2*eps);
+  const s2 = (Engine.infer(x1,x2+eps,delta)-Engine.infer(x1,x2-eps,delta))/(2*eps);
+  const Uout  = Engine.propagate([s1,s2],[Utotal,Utotal]);
+  const sensMag = Math.sqrt(s1*s1+s2*s2);
+  const stab  = 1 - Math.min(1, (simHistory.out.length>1?Math.std(simHistory.out):0)*5);
+  const rob   = Math.min(1,Math.max(0,
+    (1-Math.min(1,Uout))*0.4 + (1-Math.min(1,sensMag/10))*0.3 + 0.3));
+
+  // L4
+  const crisp = Math.min(1,Math.max(0,rawOut));
+  const conf  = Math.min(1,Math.max(0, rob*(1-Math.min(1,Uout*2))));
+  const labels= ["Very Low","Low","Medium","High","Very High"];
+  const label = labels[Math.min(4,Math.floor(crisp*5))];
+  const valid = conf >= 0.5;
+  const passed= rob >= 0.75;
+
+  // History
+  simHistory.out.push(crisp); simHistory.rob.push(rob); simHistory.conf.push(conf);
+  if(simHistory.out.length>20){simHistory.out.shift();simHistory.rob.shift();simHistory.conf.shift();}
+
+  // Results
+  document.getElementById('sim-results').innerHTML = `
+    <div class="result-card"><div class="label">Crisp Output</div><div class="value val-blue">${crisp.toFixed(3)}</div></div>
+    <div class="result-card"><div class="label">Decision Label</div><div class="value val-purple" style="font-size:1rem">${label}</div></div>
+    <div class="result-card"><div class="label">Confidence</div><div class="value val-green">${(conf*100).toFixed(1)}%</div></div>
+    <div class="result-card"><div class="label">Robustness Score</div><div class="value ${rob>=0.75?'val-green':'val-yellow'}">${rob.toFixed(3)}</div></div>
+    <div class="result-card"><div class="label">Aleatory Ua</div><div class="value" style="font-size:1.1rem">${Ua.toFixed(4)}</div></div>
+    <div class="result-card"><div class="label">Epistemic Ue</div><div class="value" style="font-size:1.1rem">${Ue.toFixed(4)}</div></div>
+    <div class="result-card"><div class="label">Total Uncertainty</div><div class="value val-yellow">${Utotal.toFixed(4)}</div></div>
+    <div class="result-card"><div class="label">δ (delta)</div><div class="value" style="font-size:1.1rem">${delta.toFixed(4)}</div></div>
+    <div class="result-card"><div class="label">Uout (propagated)</div><div class="value val-yellow">${Uout.toFixed(4)}</div></div>
+    <div class="result-card"><div class="label">Robustness Check</div><div class="value ${passed?'val-green':'val-red'}">${passed?'PASS':'FAIL'}</div></div>
+    <div class="result-card"><div class="label">Valid Decision</div><div class="value ${valid?'val-green':'val-red'}">${valid?'YES':'NO'}</div></div>
+    <div class="result-card"><div class="label">Sensitivity |∇|</div><div class="value" style="font-size:1.1rem">${sensMag.toFixed(3)}</div></div>
+  `;
+
+  // Log
+  const now = new Date().toLocaleTimeString();
+  const log = document.getElementById('sim-log');
+  log.innerHTML += `<div><span class="log-time">[${now}]</span> <span class="log-info">L1</span> Ua=${Ua.toFixed(4)} Ue=${Ue.toFixed(4)} δ=${delta.toFixed(4)}</div>`;
+  log.innerHTML += `<div><span class="log-time">[${now}]</span> <span class="log-info">L2</span> Inference output = ${rawOut.toFixed(4)}</div>`;
+  log.innerHTML += `<div><span class="log-time">[${now}]</span> <span class="log-info">L3</span> Uout=${Uout.toFixed(4)} Robustness=${rob.toFixed(3)} → <span class="${passed?'log-ok':'log-warn'}">${passed?'PASS':'FAIL'}</span></div>`;
+  log.innerHTML += `<div><span class="log-time">[${now}]</span> <span class="log-info">L4</span> Decision: ${label} (conf=${(conf*100).toFixed(1)}%) valid=${valid}</div>`;
+  log.scrollTop = log.scrollHeight;
+
+  drawSimChart();
+}
+
+Math.std = function(arr) {
+  if(arr.length<2) return 0;
+  const mu = arr.reduce((a,b)=>a+b,0)/arr.length;
+  return Math.sqrt(arr.reduce((s,x)=>s+Math.pow(x-mu,2),0)/arr.length);
+};
+
+function drawSimChart() {
+  const canvas = document.getElementById('simChart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#060a12';
+  ctx.fillRect(0,0,W,H);
+
+  const data = [
+    {vals:simHistory.out,  color:'#00d4ff', label:'Output'},
+    {vals:simHistory.rob,  color:'#10b981', label:'Robustness'},
+    {vals:simHistory.conf, color:'#a78bfa', label:'Confidence'},
+  ];
+
+  const pad = {t:20,b:30,l:40,r:20};
+  const gW = W-pad.l-pad.r, gH = H-pad.t-pad.b;
+
+  // Grid
+  ctx.strokeStyle='#1e2d45'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y = pad.t + gH*(1-i/4);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillStyle='#64748b'; ctx.font='10px JetBrains Mono';
+    ctx.fillText((i/4).toFixed(2), 2, y+4);
+  }
+
+  // Lines
+  data.forEach(d=>{
+    if(d.vals.length < 2) return;
+    ctx.strokeStyle = d.color; ctx.lineWidth = 2;
+    ctx.beginPath();
+    d.vals.forEach((v,i)=>{
+      const x = pad.l + i/(Math.max(d.vals.length-1,1))*gW;
+      const y = pad.t + gH*(1-v);
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    // legend
+    const li = data.indexOf(d);
+    ctx.fillStyle = d.color;
+    ctx.fillRect(pad.l+li*120, H-18, 12, 8);
+    ctx.fillStyle='#e2e8f0'; ctx.font='10px JetBrains Mono';
+    ctx.fillText(d.label, pad.l+li*120+16, H-11);
+  });
+}
+
+function resetSim() {
+  simHistory = {out:[], rob:[], conf:[]};
+  document.getElementById('sim-results').innerHTML='';
+  document.getElementById('sim-log').innerHTML='';
+  const ctx = document.getElementById('simChart').getContext('2d');
+  ctx.clearRect(0,0,700,160);
+}
+
+// ── Benchmark Chart ──────────────────────────────────────────
+function drawBenchChart() {
+  const canvas = document.getElementById('benchChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle='#060a12'; ctx.fillRect(0,0,W,H);
+
+  const groups = ['Accuracy','Robustness Index','Memory Usage'];
+  const vals   = [
+    [91.7, 84.9, 85.2],
+    [91.0, 76.0, 76.0],
+    [46,   37,   62],
+  ];
+  const normalised = [
+    [91.7, 84.9, 85.2].map(v=>v/100),
+    [0.91, 0.76, 0.76],
+    [46,37,62].map(v=>1-v/100),
+  ];
+  const colors = ['#00d4ff','#10b981','#7c3aed'];
+  const labels = ['DRFIS','Traditional FIS','Type-2 FIS'];
+
+  const pad={t:20,b:40,l:30,r:20};
+  const gW=W-pad.l-pad.r, gH=H-pad.t-pad.b;
+  const gCount=groups.length, bPerG=3, bW=gW/(gCount*(bPerG+1));
+
+  groups.forEach((g,gi)=>{
+    const gx = pad.l + gi*(gW/gCount);
+    ctx.fillStyle='#64748b'; ctx.font='10px JetBrains Mono';
+    ctx.fillText(g, gx+2, H-8);
+
+    labels.forEach((lbl,li)=>{
+      const v = normalised[gi][li];
+      const x = gx + li*(bW+2) + 8;
+      const bH = gH * v;
+      const y  = pad.t + gH - bH;
+      ctx.fillStyle = colors[li];
+      ctx.fillRect(x, y, bW, bH);
+      ctx.fillStyle='#fff'; ctx.font='9px JetBrains Mono';
+      ctx.fillText([vals[gi][li]],[91.7,84.9,85.2][li]?[vals[gi][li]]+'%':[vals[gi][li]], x, y-3);
+    });
+  });
+
+  // Legend
+  labels.forEach((l,i)=>{
+    ctx.fillStyle=colors[i];ctx.fillRect(10+i*140,H-26,10,8);
+    ctx.fillStyle='#e2e8f0';ctx.font='10px JetBrains Mono';
+    ctx.fillText(l,24+i*140,H-19);
+  });
+}
+
+// ── Download Code ────────────────────────────────────────────
+function downloadCode() {
+  const code = document.querySelector('#page-fullcode .code-block pre').innerText;
+  const blob = new Blob([code], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'drfis_complete.py';
+  a.click();
+}
+
+// ── Init ─────────────────────────────────────────────────────
+window.addEventListener('load', ()=>{
+  drawBenchChart();
+  updateSim();
+});
+</script>
+</body>
+</html>
